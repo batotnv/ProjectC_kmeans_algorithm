@@ -8,11 +8,14 @@
 #define rowLength(array) (sizeof((array))/sizeof((array)[0]))
 #define colLength(array) sizeof((array)[0])/sizeof((array)[0][0])
 
+#define MAX_VARIABLES 10000
 
 //kmeans parameters
 
 #define number_clusters 3
 #define MAX_ITERATIONS 5
+
+
 
 
 struct myArray{
@@ -37,7 +40,7 @@ double euclidean_distance(struct myArray p, struct myArray q, int n){
   //      printf("%lf \n", dist);
     }
     dist = sqrt(dist);
-//    printf("obliczony dystans w funkcji: %f \n", dist);
+ //   printf("obliczony dystans w funkcji: %f \n", dist);
     return dist;
 }
 
@@ -57,9 +60,7 @@ struct myArray calculate_centroid(int length, int column,struct myArray *array, 
     int i, j, k;
     int members = 0;
     struct myArray *c = malloc(sizeof(*c)*length);
- //jak to zadeklerowac dynamicznie?
-  //  struct myArray c[50];
-    struct myArray centroid;
+    struct myArray *centroid = malloc(sizeof(*centroid));
     double mean = 0;
 
  //wybieranie wszystkich obserwacji nalezacych do danego klastra
@@ -75,10 +76,10 @@ struct myArray calculate_centroid(int length, int column,struct myArray *array, 
 
     if(members == 0){
             for(i = 0; i < column; i++){
-                centroid.values[i] = 0;
+                centroid -> values[i] = 0;
             }
 
-        return centroid;
+        return *centroid;
     }
 
 
@@ -92,11 +93,11 @@ struct myArray calculate_centroid(int length, int column,struct myArray *array, 
 
    //     printf("Suma: %f \n", mean);
         mean = mean/members;
-        centroid.values[i] = mean;
+        centroid -> values[i] = mean;
         mean = 0;
     }
 
-    return centroid;
+    return *centroid;
 }
 
 //funkcja zwracaja najblizsza centroide dla danej obserwacji
@@ -144,14 +145,20 @@ int closest_centroid(struct myArray *centroids, struct myArray observation, int 
 //wariancja wewnatrz klastrowa, czyli zsumowane odeglosci pomiedzy wszystkimi obserwacjami w danym klastrze
 //i podzielone przez ilosc wszystkich obserwacji znajdujacych sie w nim
 
-double within_cluster_variance(int length, struct myArray *observations, int cluster){
+double within_cluster_variance(int columns, int length, struct myArray *observations, int cluster){
 
+    printf("\nNOWE LICZENIE WITHIN CLUSTER \n\n");
      int i, j, k;
    // double distances[number_clusters];
+
+ //   double *variance = malloc(sizeof(*variance));
+ //   *variance = 0;
     double variance = 0;
     double sum = 0;
+//    double *sum = malloc(sizeof(*sum));
+ //   *sum = 0;
     int members = 0;
-
+    double temp = 0;
     struct myArray *c = malloc(sizeof(*c)*length);
 
      //wybieranie wszystkich obserwacji nalezacych do danego klastra
@@ -163,34 +170,55 @@ double within_cluster_variance(int length, struct myArray *observations, int clu
         }
     }
 
+ //   printf("MEMBERS %d \n", members);
+
+
+//       //printing gotten data
+//     for(k = 0; k < members; k++){
+//        printf("Member nr %d \n",k);
+//        for(j = 0; j < 5; j++){
+//         //   printf("%f ", testArray[k][j]);
+//
+//            printf("%lf\n", c[k].values[j]);
+//        }
+//        printf("\n");
+//    }
     //jesli w danym klastrze nie ma zadnych obserwacji to wariancja 0
 
-    if(members == 0){
+    if(members == 0 || members == 1){
         return variance;
     }
+    else{
+        // petla liczaca odleglosci pomiedzy kazda z obserwacji
 
-// petla liczaca odleglosci pomiedzy kazda z obserwacji
-
-    for(i = 0; i < members; i++){
-        for(j = 1; j < (members - i); j++){
-            sum += euclidean_distance(c[i], c[i+j], members);
+        for(i = 0; i < (members - 1); i++){
+            for(j = i + 1 ; j < members; j++){
+                temp = euclidean_distance(c[i], c[j], columns);
+           //     printf("dodaje dystans miedzy czlonkami %d i %d %f \n", i, j, temp);
+                sum += temp;
+            }
         }
-    }
 
     //obliczenie wariancji
+    //    printf("SUM OF MEMBERS DISTANCES: %f \n", sum);
 
-    variance = sum/members;
+        variance = sum/(double)members;
+     //   printf("SUM AFTER DIVIDE: %f \n", variance);
 
-    return variance;
+        return variance;
 
-};
+    }
+
+}
+
+
 
 
 //funkcja zwracajaca ilosc wierszy w danym pliku
 
 int count_rows(FILE *fp){
     int rows = 0;
-    int ch;
+    char line[MAX_VARIABLES];
 
         //counting rows in file
     if (!fp){
@@ -198,8 +226,10 @@ int count_rows(FILE *fp){
         return 1;
     }
     else{
-        while (EOF != (fscanf(fp, "%*[^\n]"), fscanf(fp,"%*c")))
-            ++rows;
+       // while (EOF != (fscanf(fp, "%*[^\n]"), fscanf(fp,"%*c")))
+        while(fgets(line, sizeof(line), fp) != NULL){
+        rows++;
+    }
     }
 
     printf("THIS TXT HAS %d ROWS \n", rows);
@@ -221,17 +251,17 @@ int count_columns(FILE *fp){
     }
     else{
 
-         while((ch=fgetc(fp))!=EOF) {
-            if(ch=='\n')
+         while((ch= fgetc(fp))!= EOF) {
+            if(ch == '\n')
                 break;
-            if(ch==' ')
+            if(ch == ' ')
+                ++cols;
                 continue;
-            ++cols;
         }
     }
 
-    printf("THIS TXT HAS %d COLS \n", cols);
-    return cols;
+    printf("THIS TXT HAS %d COLS \n", cols+1);
+    return cols+1;
 }
 
 
@@ -256,7 +286,7 @@ int main()
     rows = count_rows(fp1);
     columns = count_columns(fp2);
 
-    //rows = 6;
+    //rows = 5;
     //columns = 5;
     //printf("length col: %d \n", columns);
     //printf("length rows: %d \n", rows);
@@ -351,17 +381,6 @@ int main()
 
         printf("OBLICZANIE ODLEGLOSCI POMIEDZY OBSERWACJAMI, A CENTROIDAMI... \n");
         printf("PRZYDZIELANIE DO NOWYCH, BLIZSZYCH KLASTROW \n \n");
-    //    for(i = 0; i < length; i++){
-    //
-    //        closest_centroid(centroids, newArray[i], column);
-    //        printf("Obserwacja nr %d nalezy do klastra %d \n", i, newArray[i].cluster);
-    //
-    //    }
-
-
-     //   printf("Nowy klaster dla obserwacji: %d \n", closest_centroid(centroids, newArray[0], columns));
-      //  printf("Obserwacja nr %d nalezy do klastra %d \n", 0, newArray[0].cluster);
-      //  printf("Obserwacja nr %d nalezy do klastra %d \n", 3, newArray[3].cluster);
 
 
         //przydzielenie nowego klastra danej obserwacji
@@ -382,11 +401,13 @@ int main()
         printf("OBLICZANIE WARIANCJI WEWNATRZKLASTROWYCH... \n\n");
 
         double sum_variance = 0;
+        double temp = 0;
 
         for(i = 1; i <= number_clusters; i++){
 
-           printf("Wariancja wewnatrzklastrowa klastra %d wynosi: %f \n", i, within_cluster_variance(rows, newArray, i));
-           sum_variance += within_cluster_variance(rows, newArray, i);
+           temp = within_cluster_variance(columns, rows, newArray, i);
+           printf("Wariancja wewnatrzklastrowa klastra %d wynosi: %f \n", i, temp);
+           sum_variance += temp;
            printf("Suma wszystkich warianacji wewnatrzklastrowych wynosi: %f \n", sum_variance);
 
         }
@@ -399,6 +420,7 @@ int main()
 
             sum_variance_guard = sum_variance;
             a++;
+            printf("WARIANCJA NIZSZA! LECIMY DALEJ!\n");
             continue;
         }
         else if (sum_variance >= sum_variance_guard) {
@@ -415,15 +437,47 @@ int main()
     // bo gdy sprawdzamy nowy to tracimy poprzednie?
 
     //PRINT ROZWIAZANIA
+    printf("\n");
+    printf("WYNIKI ALGORYTMU \n \n");
 
+//         printing results
+    for(k = 1; k <= number_clusters; k++){
 
+        printf("KLASTER %d \n", k);
+        for(j = 0; j < rows; j++){
 
-
+            if(newArray[j].cluster == k){
+                printf("Obserwacja nr %d \n", j);
+            }
+        }
+        printf("\n");
+    }
 
 
     fclose(fpointer);
     fclose(fp1);
     fclose(fp2);
+
+
+    FILE *fpw;
+    fpw = fopen("results.txt","w");
+
+    for(k = 1; k <= number_clusters; k++){
+
+        fprintf(fpw,"KLASTER %d \n", k);
+        for(j = 0; j < rows; j++){
+
+            if(newArray[j].cluster == k){
+
+                fprintf(fpw, "Obserwacja nr %d \n", j);
+            }
+        }
+        fprintf(fpw,"\n");
+    }
+
+
+
+    fclose(fpw);
 
 
     return 0;
