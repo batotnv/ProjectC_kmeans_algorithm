@@ -1,21 +1,37 @@
 KLASTER 1 
-Obserwacja nr 12 
+Obserwacja nr 1 
+Obserwacja nr 4 
+Obserwacja nr 5 
+Obserwacja nr 17 
+Obserwacja nr 18 
+Obserwacja nr 23 
+Obserwacja nr 24 
 
 KLASTER 2 
-Obserwacja nr 0 
-Obserwacja nr 1 
-Obserwacja nr 2 
 Obserwacja nr 3 
 Obserwacja nr 6 
 Obserwacja nr 8 
-Obserwacja nr 11 
+Obserwacja nr 14 
+Obserwacja nr 15 
+Obserwacja nr 22 
 
 KLASTER 3 
-Obserwacja nr 5 
-Obserwacja nr 7 
+Obserwacja nr 10 
+Obserwacja nr 12 
 
 KLASTER 4 
-Obserwacja nr 4 
+Obserwacja nr 0 
+Obserwacja nr 2 
+Obserwacja nr 11 
+Obserwacja nr 16 
+Obserwacja nr 20 
+
+KLASTER 5 
 Obserwacja nr 9 
-Obserwacja nr 10 
+Obserwacja nr 13 
+Obserwacja nr 19 
+Obserwacja nr 21 
+
+KLASTER 6 
+Obserwacja nr 7 
 

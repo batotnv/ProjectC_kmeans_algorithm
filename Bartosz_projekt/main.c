@@ -2,33 +2,41 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
-#include <stdbool.h>
-
-//the defines which helps in getting length of an array
-//#define rowLength(array) (sizeof((array))/sizeof((array)[0]))
-//#define colLength(array) sizeof((array)[0])/sizeof((array)[0][0])
 
 #define MAX_VARIABLES 100
 #define MAX_OBSERVATIONS 100
-
-//kmeans parameters
-#define number_clusters 4
+#define FILENAME "data.txt"
+#define number_clusters 6
 #define MAX_ITERATIONS 100
-#define RANDOM_DRAWS 20
+#define RANDOM_DRAWS 50
 
+/**
+* @file main.c
+* @author Bartosz Nguyen Van
+* @date 04.11.2020
+* @brief Glowny plik projektu
+*
+*\mainpage Opis projektu:
+* Implementacja algorytmu k-srednich w jezyku C.
+* Skrotowy opis programu:
+* Program pozwala przeprowadzic analize skupien dla n-obserwacji p-wymiarowych przy uzyciu algorytmu k-srednich. Stosowana odlegloscia w napisanym algorytmie jest odleglosc euklidesowa. Przy uruchamianiu algorytmu mozliwe jest
+* ustalenie nastepujacych parametrow: liczby klastrow, liczby iteracji oraz liczby wykonan algorytmu (pozwala to na zmniejszenie ryzyka otrzymania wyniku minimum lokalnego, gdyz obserwacje do klastrow przydzielane sa losowo).
+* Program obsługuje wczytywanie danych oraz zapisywanie wynikoww w plikach o rozszerzeniu .txt.
+*/
+
+/** struktura przechowujaca dana obserwacje oraz numer klastru do ktorego ona nalezy */
 struct myArray{
-  char observation_name[50];//nazwa obserwacji
-  double values[MAX_VARIABLES];//miejsce na dane
-  int cluster; //przyporzadkowany klaster
+  double values[MAX_VARIABLES];
+  int cluster;
 };
 
-//function that computes euclidean distance
-//p - 1st vector
-//q - 2nd vector
-//n - number of variables (dimensions)
-
-
-
+/**
+ @brief euclidean_distance
+  Funkcja to oblicza odleglosc euklidesowa pomiedzy dwoma obserwacjami (wektorami, gdy mamy wiele wymiarow).
+ \param p - pierwsza obserwacja
+ \param q - druga obserwacja
+ \param columns - liczba wymiarow (zmiennych)
+ */
 
 double euclidean_distance(struct myArray p, struct myArray q, int columns){
     int i;
@@ -40,14 +48,27 @@ double euclidean_distance(struct myArray p, struct myArray q, int columns){
     return dist;
 }
 
-// funkcja losująca liczby całkowite z przedziału <min, max>
+/**
+ @brief random
+  Funkcja losujaca liczby calkowite z przedzialu domknietego <min, max>.
+ \param min - wartosc minimalna dla przedzialu
+ \param max - wartosc maksymalna dla przedzialu
+ */
 int random(int min, int max) {
     int range = max - min + 1;
     int divider = RAND_MAX / range;
     return min + (rand() / divider);
 }
 
-//funkcja liczaca centroidy dla poszczegolnych klastrow
+/**
+ @brief calculate_centroid
+  Funkcja obliczajaca centroide dla obserwacji znajdujacych sie w danym klastrze. Centroida to srednia arytmetyczna dla poszczegolnych zmiennych tych obserwacji (wektor, jesli zmiennych jest wiecej niz 1)
+ \param rows - liczba obserwacji
+ \param columns - liczba wymiarow
+ \param array - tablica z obserwacjami
+ \param cluster - numer klastra dla ktorego liczymy centroide
+ */
+
 struct myArray calculate_centroid(int rows, int columns,struct myArray *array, int cluster){
     int i, j, k;
     int members = 0;
@@ -55,25 +76,25 @@ struct myArray calculate_centroid(int rows, int columns,struct myArray *array, i
     struct myArray centroid;
     double mean = 0;
 
- //wybieranie wszystkich obserwacji nalezacych do danego klastra
+/** wybor obserwacji nalezacych do klastra */
     for (k = 0; k < rows; k++){
         if(array[k].cluster == cluster){
             c[members] = array[k];
             members++;
         }
     }
-//jesli nie ma zadnych obserwacji w tym klastrze, zwracam wektor z samymi zerami
+/** jesli w danym klastrze nie ma obserwacji to zwracany jest wektor z samymi zerami */
     if(members == 0){
-            for(i = 0; i < columns; i++){
-                centroid.values[i] = 0;
-            }
+        for(i = 0; i < columns; i++){
+            centroid.values[i] = 0;
+        }
         return centroid;
     }
-//obliczanie centroidy dla danego klastra, srednia poszczegolnych obserwacji (srednia z wartosci po kolumnach)
+/**obliczanie centroidy*/
     for (i = 0; i < columns; i++){
         for(j = 0; j < members; j++){
             mean += c[j].values[i];
-            }
+        }
         mean = mean/members;
         centroid.values[i] = mean;
         mean = 0;
@@ -81,74 +102,86 @@ struct myArray calculate_centroid(int rows, int columns,struct myArray *array, i
     return centroid;
 }
 
-//funkcja zwracaja najblizsza centroide dla danej obserwacji
+/**
+ @brief closest_centroid
+  Funkcja zwracajaca numer najblizszej centroidy dla danej obserwacji.
+ \param centroids - tablica ze wszystkimi centroidami
+ \param observation - obserwacja
+ \param columns - liczba wymiarow
+ */
 int closest_centroid(struct myArray *centroids, struct myArray observation, int columns){
 
     int i;
     double *distances = malloc(sizeof(*distances)*number_clusters);
 
-    //obliczanie odleglosci euklidesowej pomiedzy obserwacja, a kazda z centroid
+/** obliczanie odleglosci euklidesowej pomiedzy obserwacja, a kazda z centroid */
     for (i = 0; i < number_clusters; i++){
-            distances[i] = euclidean_distance(observation, centroids[i], columns);
+        distances[i] = euclidean_distance(observation, centroids[i], columns);
     }
 
-    //wybor klastra o najmniejszej odleglosci do obserwacji
+/** wybor klastra o najmniejszej odleglosci do obserwacji */
     double minimum = distances[0];
     int index_min = 0;
 
     for (int i = 0; i < number_clusters; i++) {
-
         if (distances[i] < minimum){
             minimum = distances[i];
             index_min = i;
         }
     }
-// +1 bo indeksowanie od 0, a klastry od 1
+/** +1 bo indeksowanie od 0, a klastry numerowane sa od 1*/
     observation.cluster = index_min + 1;
-
-   return observation.cluster;
+    return observation.cluster;
 }
 
-//wariancja wewnatrz klastrowa, czyli zsumowane odeglosci pomiedzy wszystkimi obserwacjami w danym klastrze
-//i podzielone przez ilosc wszystkich obserwacji znajdujacych sie w nim
+/**
+ @brief within_cluster_variation
+  Funkcja obliczajaca zmiennosc wewnatrzklastrowa w danym klastrze, tj. zsumowane odleglosci pomiedzy wszystkimi obserwacjami i podzielone przez ich liczbe.
+ \param columns - liczba wymiarow
+ \param rows - liczba obserwacji
+ \param observations - macierz z obserwacjami
+ \param cluster - numer klastra
+ */
 
-double within_cluster_variance(int columns, int length, struct myArray *observations, int cluster){
+double within_cluster_variation(int columns, int rows, struct myArray *observations, int cluster){
 
     int i, j, k;
-    double variance = 0;
+    double variation = 0;
     double sum = 0;
     int members = 0;
     double temp = 0;
-    struct myArray *c = malloc(sizeof(*c)*length);
+    struct myArray *c = malloc(sizeof(*c)*rows);
 
-     //wybieranie wszystkich obserwacji nalezacych do danego klastra
-    for (k = 0; k < length; k++){
+/** wybieranie wszystkich obserwacji nalezacych do danego klastra*/
+    for (k = 0; k < rows; k++){
         if(observations[k].cluster == cluster){
             c[members] = observations[k];
             members++;
         }
     }
-    //jesli w danym klastrze nie ma zadnych obserwacji to wariancja 0
+/**jesli w danym klastrze nie ma zadnych obserwacji to wariancja 0*/
     if(members == 0 || members == 1){
-        return variance;
+        return variation;
     }
     else{
-        // petla liczaca odleglosci pomiedzy kazda z obserwacji
+/**petla liczaca odleglosci pomiedzy kazda z obserwacji*/
         for(i = 0; i < (members - 1); i++){
             for(j = i + 1 ; j < members; j++){
                 temp = euclidean_distance(c[i], c[j], columns);
                 sum += temp;
             }
         }
-    //obliczenie wariancji wewnatrzklastrowej
-        variance = sum/(double)members;
-
-        return variance;
+/**obliczenie zmiennosci wewnatrzklastrowej*/
+        variation = sum/(double)members;
+        return variation;
     }
-
 }
 
-//funkcja zwracajaca ilosc wierszy w danym pliku
+/**
+ @brief count_rows
+  Funkcja zwracajaca ile wierszy (obserwacji) znajduje sie w danym pliku.
+ \param fp - sprawdzany plik
+ */
 int count_rows(FILE *fp){
 
     int rows = 0;
@@ -160,14 +193,17 @@ int count_rows(FILE *fp){
     }
     else{
         while(fgets(line, sizeof(line), fp) != NULL){
-        rows++;
+            rows++;
         }
     }
-    printf("THIS TXT HAS %d ROWS \n", rows);
     return rows;
 }
 
-//funkcja zwracajaca ilosc kolumn w danym pliku
+/**
+ @brief count_columns
+  Funkcja zwracajaca ile kolumn (zmiennych) znajduje sie w danym pliku.
+ \param fp - sprawdzany plik
+ */
 int count_columns(FILE *fp){
 
     int cols = 0;
@@ -181,17 +217,22 @@ int count_columns(FILE *fp){
          while((ch = fgetc(fp))!= EOF) {
             if(ch == '\n')
                 break;
-            else if(ch == ' '){
+            else if(ch == ','){
                 ++cols;
                 continue;
             }
         }
     }
-    printf("THIS TXT HAS %d COLS \n", cols+1);
     return cols+1;
 }
 
-//zapis do pliku
+/**
+ @brief write_to_file
+  Funkcja zapisujaca wyniki do pliku.
+ \param fpw - uzywany plik
+ \param array - macierz z obserwacjami
+ \param rows - liczba obserwacji
+ */
 void write_to_file(FILE *fpw, struct myArray *array, int rows){
 
     int k, j;
@@ -208,8 +249,14 @@ void write_to_file(FILE *fpw, struct myArray *array, int rows){
     printf("WYNIKI ZAPISANO DO PLIKU! \n\n");
 }
 
-//print do konsoli
+/**
+ @brief print_to_console
+  Funkcja wyswietlajca uzyskane wyniki w konsoli.
+ \param array - macierz z obserwacjami
+ \param rows - liczba obserwacji
+ */
 void print_to_console(struct myArray *array, int rows){
+
     int k, j;
 
     for(k = 1; k <= number_clusters; k++){
@@ -223,165 +270,127 @@ void print_to_console(struct myArray *array, int rows){
     }
 }
 
+/**FUNKCJA MAIN */
 int main()
 {
+    /**Dzieki temu ziarno programu za kazdym razem bedzie inne*/
     srand(time(NULL));
 
-    int i, j, k, columns, rows;
+    /**Deklaracja zmiennych pomocniczych*/
+    int i, j, columns, rows;
     int b = 1;
     int a = 1;
 
-    FILE *fp1, *fp2, *fpointer;
-    fp1 = fopen("data.txt", "r");
-    fp2 = fopen("data.txt", "r");
-    fpointer = fopen("data.txt", "r");
+    /**Zadeklarowanie zmiennych, ktore beda kontrolowac wykonywanie algorytmu (sprawdzac czy wewnetrzna zmiennosc sie zmniejsza)*/
+    double iterations_guard;
+    double random_guard;
 
+    /**Wczytywanie pliku*/
+    FILE *fp1, *fp2, *fpointer;
+    fp1 = fopen(FILENAME, "r");
+    fp2 = fopen(FILENAME, "r");
+    fpointer = fopen(FILENAME, "r");
+
+    /**Obliczenie ilosc obserwacji i zmiennych*/
     rows = count_rows(fp1);
     columns = count_columns(fp2);
 
     fclose(fp1);
     fclose(fp2);
-
+    /**Dynamiczna deklaracja uzywanych struktur*/
     struct myArray *newArray = malloc(sizeof(*newArray)*rows);
     struct myArray *backupArray = malloc(sizeof(*backupArray)*rows);
     struct myArray *resultsArray = malloc(sizeof(*resultsArray)*rows);
 
-    //returning error when program cannot open a file
+    /**Sprawdzanie czyli plik sie otworzyl prawidlowo*/
     if (!fpointer){
         fprintf (stderr, "Failed to open file!\n");
         return 1;
     }
 
-    //getting data from file
+    /**Pobieranie danych z pliku*/
     printf("POBIERANIE DANYCH Z PLIKU... \n \n");
-
     for( i = 0; i < rows; i++){
         for(j = 0; j < columns; j++){
-            fscanf(fpointer,"%lf", &newArray[i].values[j]);
+            fscanf(fpointer,"%lf,", &newArray[i].values[j]);
         }
     }
     fclose(fpointer);
 
-    printf("POBRANE DANE: \n");
-
-     //printing gotten data
-     for(k = 0; k < rows; k++){
-        printf("Obserwacja nr %d \n",k);
-        for(j = 0; j < columns; j++){
-            printf("%lf\n", newArray[k].values[j]);
-        }
-        printf("\n");
-    }
-
-    //zadeklarowanie zmiennych, ktore beda kontrolowac wykonywanie algorytmu (sprawdzac czy wewnetrzna wariancja sie zmniejsza)
-    double iterations_guard;
-    double random_guard;
-
-    for(i = 0; i < rows; i++){
-        newArray[i].cluster = 1;
-        }
-
-    //wartoscia kontrolna bedzie wariancja wewnatrzklastrowa w przpypadku, gdy wszystkie obserwacje bylyby w jednym klastrze
-    random_guard = within_cluster_variance(columns, rows, newArray, 1);
-    iterations_guard = random_guard;
-
-    //tutaj zaczyna sie petla, dzieki ktorej mozliwe bedzie kilkukrotnie losowanie klastrow
+    /**GLOWNA PETLA
+    tutaj zaczyna sie petla, dzieki ktorej mozliwe bedzie kilkukrotnie losowanie klastrow*/
     while(b <= RANDOM_DRAWS){
-
-    //printf("LOSOWANIE PRZYDZIELANIE KLASTRÓW nr %d\n\n", b);
-    //pomocnicza do wewnetrznej petli iteracyjnej
-
+        printf("LOSOWANIE PRZYDZIELANIE KLASTRÓW nr %d\n\n", b);
+    /**Losowe przydzielanie obserwacji do klastrow*/
         for(i = 0; i < rows; i++){
             newArray[i].cluster = random(1, number_clusters);
-  //          printf("Obserwacja nr %d nalezy do klastra %d \n", i, newArray[i].cluster);
         }
 
-    //TUTAJ ZACZYNA SIĘ PĘTLA ITERACYJNA
-
+    /**TUTAJ ZACZYNA SIĘ PĘTLA ITERACYJNA
+    szukany jest najlepszy mozliwy podzial obserwacji na skupienia, gdzie punktem poczatkowym jest wylosowanie klastrow b
+    */
         while(a <= MAX_ITERATIONS){
+            printf("ZACZYNAM ITERACJE NR %d \n", a);
+        /**Deklaracja struktury przechowujacej centroidy*/
+            struct myArray *centroids = malloc(sizeof(*centroids)*rows);
+        /**Obliczanie centroid*/
+            for(i = 0; i < rows; i++){
+                centroids[i] = calculate_centroid(rows, columns, newArray, i+1);
+            }
+        /**Przydzielanie obserwacji do nowych, najblizszych klastrow */
+            for(i = 0; i < rows; i++){
+                newArray[i].cluster = closest_centroid(centroids, newArray[i], columns);
+            }
+        /**Deklracja zmiennych pomocniczych przy obliczaniu zmiennosci*/
+            double sum_variation = 0;
+            double temp = 0;
+        /**Obliczanie zmiennosci dla kazdego z klastrow*/
+            for(i = 1; i <= number_clusters; i++){
+               temp = within_cluster_variation(columns, rows, newArray, i);
+               sum_variation += temp;
+               printf("Suma zmiennosci klastra %i wynosi: %f \n", i, sum_variation);
+            }
 
-   //     printf("\n \n");
-  //      printf("ZACZYNAM ITERACJE NR %d \n", a);
-   //     printf("OBLICZANIE CENTROID DLA POSZCZEGOLNYCH KLASTROW... \n");
-
-        //obliczanie centroid
-        struct myArray *centroids = malloc(sizeof(*centroids)*rows);
-
-        for(i = 0; i < rows; i++){
-            centroids[i] = calculate_centroid(rows, columns, newArray, i+1);
+        /**Sprawdzanie czy natrafiono na minimum lokalne, jesli nie to petla wykonuje sie dalej*/
+        /**iterations_guard - zmienna pomocnicza kontrolujaca zmiennosc*/
+        /**backupArray zapisuje najlepszy do tej pory podzial na klastry*/
+        /** (a == 1) zeby bylo pierwsze wyniki zapisaly sie i bylo do czego porownywac*/
+         /**Zmiennosc sie zmniejsza -> continue*/
+            if((a == 1) || (sum_variation < iterations_guard) ){
+                iterations_guard = sum_variation;
+                a++;
+                backupArray = newArray;
+                continue;
+            }
+            /**Zmiennosc pozostala taka sama lub sie zwiekszyla sie -> koniec petli*/
+            /** a = 1 by zaczynala sie od nowa dla nowego b*/
+            else if (sum_variation >= iterations_guard) {
+                a = 1;
+                break;
+            }
         }
+        /**Warunek pozwalajacy na zapisywanie nowego najlepszego wyniku (podzialu), gdy takowy sie pojawi */
+        /**Wynik jest pokazywany w konsoli, a takze zapisywany do pliku results.txt*/
+        if((b == 1) || ((iterations_guard < random_guard))){
+            random_guard = iterations_guard;
+            resultsArray = backupArray;
+            printf("\n############################## \n");
+            printf("NOWE NAJLEPSZE ROZWIAZANIE!");
+            printf("\n############################## \n");
+            printf("\nNOWA NAJLEPSZA SUMA WARIANCJI! : %f \n \n", random_guard);
+            printf("WYNIKI ALGORYTMU \n \n");
+            print_to_console(resultsArray, rows);
 
-        //printowanie centroid
-//        for(j = 0; j < number_clusters; j++){
-//            printf("CENTROIDA NR %d \n", j+1);
-//            for (i = 0; i < columns; i++){
-//                printf("%f \n", centroids[j].values[i]);
-//            }
-//            printf("\n");
-//        }
-
-        //obliczanie odleglosci pomiedzt centroidami, a obserwacjami
-   //     printf("OBLICZANIE ODLEGLOSCI POMIEDZY OBSERWACJAMI, A CENTROIDAMI... \n");
-   //     printf("PRZYDZIELANIE DO NOWYCH, BLIZSZYCH KLASTROW \n \n");
-
-        //przydzielenie nowego klastra danej obserwacji
-        for(i = 0; i < rows; i++){
-            newArray[i].cluster = closest_centroid(centroids, newArray[i], columns);
-     //       printf("UPDATE Obserwacja nr %d nalezy do klastra %d \n", i, newArray[i].cluster);
-        }
-
-        //obliczanie wariancji wewnatrzklastrowych
-  //      printf("\n");
-    //    printf("OBLICZANIE WARIANCJI WEWNATRZKLASTROWYCH... \n\n");
-
-        double sum_variance = 0;
-        double temp = 0;
-
-        for(i = 1; i <= number_clusters; i++){
-           temp = within_cluster_variance(columns, rows, newArray, i);
-       //    printf("Wariancja wewnatrzklastrowa klastra %d wynosi: %f \n", i, temp);
-           sum_variance += temp;
-      //     printf("Suma wszystkich warianacji wewnatrzklastrowych wynosi: %f \n", sum_variance);
-
-        }
-
-    //kod sprawdzajacy czy jest minimum lokalne
-    //iterations guard - zmienna pomocnicza w sprawdzaniu wariancji w petli iteracyjnej
-
-        if((a == 1) || ((sum_variance < iterations_guard) == true) ){
-            iterations_guard = sum_variance;
-            a++;
-            backupArray = newArray;
-   //         printf("WARIANCJA NIZSZA! LECIMY DALEJ!\n");
-            continue;
-        }
-        else if (sum_variance >= iterations_guard) {
-    //        printf("MINIMUM LOKALNE! KONIEC ALGORYTMU! \n");
-            a = 1;
-            break;
-        }
+            /** zapisywanie wynikow do pliku*/
+            FILE *fpw;
+            fpw = fopen("results.txt","w");
+            write_to_file(fpw, resultsArray, rows);
+            fclose(fpw);
+            }
+            /**kolejna iteracja glownej petli...*/
+            b++;
     }
 
-    if((b == 1) || ((iterations_guard < random_guard))){
-
-        random_guard = iterations_guard;
-        resultsArray = backupArray;
-        printf("\n############################## \n");
-        printf("NOWE NAJLEPSZE ROZWIAZANIE!");
-        printf("\n############################## \n");
-        printf("\nNOWA NAJLEPSZA SUMA WARIANCJI! : %f \n \n", random_guard);
-        printf("WYNIKI ALGORYTMU \n \n");
-        print_to_console(resultsArray, rows);
-
-        //to file
-        FILE *fpw;
-        fpw = fopen("results.txt","w");
-        write_to_file(fpw, resultsArray, rows);
-        fclose(fpw);
-       }
-
-    b++;
-    }
 
     return 0;
 }
