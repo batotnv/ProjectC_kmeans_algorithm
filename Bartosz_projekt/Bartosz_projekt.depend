@@ -1,9 +1,10 @@
 # depslib dependency file v1.0
-1604443409 source:c:\users\bartosz\desktop\magisterka 1\metody i techniki programowania\bartosz_projekt\bartosz_projekt\main.c
+1604497513 source:c:\users\bartosz\desktop\magisterka 1\metody i techniki programowania\bartosz_projekt\bartosz_projekt\main.c
 	<stdio.h>
 	<stdlib.h>
 	<math.h>
 	<time.h>
+	<stdbool.h>
 
 1604435625 source:c:\users\bartosz\desktop\magisterka 1\metody i techniki programowania\bartosz_projekt\bartosz_projekt\testy.c
 
